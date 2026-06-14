@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * SewaAlatDAO — Data Access Object untuk tabel `layanan_sewa`
+ * SewaAlatDAO — Data Access Object untuk tabel `layanan_sewa` dengan Fitur URL Gambar Online.
  */
 public class SewaAlatDAO {
 
@@ -44,13 +44,13 @@ public class SewaAlatDAO {
     // ── CREATE ────────────────────────────────────────────────
 
     /**
-     * Menyimpan data sewa baru ke database.
+     * Menyimpan data sewa baru ke database (Termasuk URL Foto).
      * @return ID auto-increment yang baru dibuat, atau -1 jika gagal
      */
     public static int insert(SewaAlat s) throws SQLException {
         String sql = "INSERT INTO layanan_sewa "
-                   + "(id_layanan,jenis_alat,nama_kamera,tarif_per_hari,tgl_mulai,tgl_kembali) "
-                   + "VALUES (?,?,?,?,?,?)";
+                   + "(id_layanan, jenis_alat, nama_kamera, tarif_per_hari, tgl_mulai, tgl_kembali, foto_url) " // Tambah foto_url
+                   + "VALUES (?,?,?,?,?,?,?)";
 
         Connection conn = DatabaseConnection.getConnection();
         try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -61,6 +61,7 @@ public class SewaAlatDAO {
             ps.setDouble(4, s.getTarifPerHari());
             ps.setDate(5,   Date.valueOf(s.getTglMulai()));
             ps.setDate(6,   Date.valueOf(s.getTglKembali()));
+            ps.setString(7, s.getFotoUrl()); // Mengirim data URL online ke database
 
             int rows = ps.executeUpdate();
             if (rows > 0) {
@@ -75,8 +76,7 @@ public class SewaAlatDAO {
     // ── UPDATE ────────────────────────────────────────────────
 
     /**
-     * Memperbarui tanggal aktual pengembalian alat
-     * (dipakai saat proses pengembalian).
+     * Memperbarui tanggal aktual pengembalian alat.
      */
     public static boolean updatePengembalian(String idLayanan, LocalDate tglDikembalikan) throws SQLException {
         String sql = "UPDATE layanan_sewa SET tgl_dikembalikan=? WHERE id_layanan=?";
@@ -91,12 +91,11 @@ public class SewaAlatDAO {
     // ── DELETE ────────────────────────────────────────────────
 
     public static boolean delete(String idLayanan) throws SQLException {
-        // Hapus dulu dari transaksi (atau gunakan FK cascade)
         String delTrx = "DELETE FROM transaksi WHERE id_layanan=?";
         String delSewa = "DELETE FROM layanan_sewa WHERE id_layanan=?";
 
         Connection conn = DatabaseConnection.getConnection();
-        conn.setAutoCommit(false);  // mulai transaction
+        conn.setAutoCommit(false);  
         try (PreparedStatement ps1 = conn.prepareStatement(delTrx);
              PreparedStatement ps2 = conn.prepareStatement(delSewa)) {
             ps1.setString(1, idLayanan); ps1.executeUpdate();
@@ -113,10 +112,6 @@ public class SewaAlatDAO {
 
     // ── ID GENERATOR ─────────────────────────────────────────
 
-    /**
-     * Menghasilkan ID sewa otomatis: SW001, SW002, ...
-     * Berdasarkan jumlah baris di tabel layanan_sewa.
-     */
     public static String generateId() throws SQLException {
         String sql = "SELECT COUNT(*) FROM layanan_sewa";
         Connection conn = DatabaseConnection.getConnection();
@@ -136,6 +131,10 @@ public class SewaAlatDAO {
         s.setTarifPerHari(rs.getDouble("tarif_per_hari"));
         s.setTglMulai(rs.getDate("tgl_mulai").toLocalDate());
         s.setTglKembali(rs.getDate("tgl_kembali").toLocalDate());
+        
+        // Ambil data foto_url dari database dan set ke model objek
+        s.setFotoUrl(rs.getString("foto_url")); 
+        
         Date tglKembaliAktual = rs.getDate("tgl_dikembalikan");
         if (tglKembaliAktual != null) s.setTglDikembalikan(tglKembaliAktual.toLocalDate());
         return s;

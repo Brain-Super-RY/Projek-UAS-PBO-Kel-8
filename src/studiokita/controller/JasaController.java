@@ -11,12 +11,14 @@ import java.util.List;
 /**
  * JasaController — Logika Bisnis Jasa Foto
  * MVC Role: Controller
+ * UPGRADE: Proteksi Status Awal 'PENDING' untuk Validasi Admin & Sinkronisasi Real-time.
  */
 public class JasaController {
 
     public static final String[] PAKET_FOTO = {
-        "Paket Reguler","Paket Prewedding","Paket Wisuda","Paket Produk","Paket Portrait"
+        "Paket Reguler", "Paket Prewedding", "Paket Wisuda", "Paket Produk", "Paket Portrait"
     };
+    
     public static final double[] HARGA_DASAR = {
         300_000, 800_000, 400_000, 500_000, 350_000
     };
@@ -36,8 +38,8 @@ public class JasaController {
     }
 
     public static String simpanJasa(String namaCustomer, String username, String telepon,
-                                     int paketIdx, String fotografer,
-                                     String tglSesiStr, int durasi, int fotoEdit) {
+                                    int paketIdx, String fotografer,
+                                    String tglSesiStr, int durasi, int fotoEdit) {
         if (namaCustomer.isBlank() || telepon.isBlank() || fotografer.isBlank())
             return "Nama customer, telepon, dan fotografer wajib diisi!";
 
@@ -62,6 +64,12 @@ public class JasaController {
 
             String idTrx = TransaksiDAO.generateId();
             Transaksi trx = new Transaksi(idTrx, cust, jf);
+            
+            // ================================================================
+            // FIX BUG REALTIME: Paksa status transaksi baru menjadi PENDING
+            // ================================================================
+            trx.setStatus("PENDING"); 
+
             TransaksiDAO.insert(trx);
             return "OK|" + String.format("%.0f", jf.hitungBiaya());
 
@@ -78,5 +86,6 @@ public class JasaController {
     }
 
     private static void logError(SQLException e) {
-        System.err.println("[JasaController] " + e.getMessage()); }
+        System.err.println("[JasaController] " + e.getMessage()); 
+    }
 }
