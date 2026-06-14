@@ -10,17 +10,20 @@ import studiokita.model.User;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 
 /**
- * MainFrame — Premium Container (Custom Glassmorphism & State Persistence).
+ * MainFrame — Premium Dashboard Frame.
+ * UPGRADE: Sistem Sinkronisasi Global Real-time Event Trigger untuk
+ * pembaruan data lintas panel (Dashboard, Sewa, Jasa, dan Rekap).
  */
 public class MainFrame extends JFrame {
 
-    private JPanel pnlSidebar, pnlContent, pnlTopStatus;
+    private JPanel pnlSidebar, pnlContent, bgPanel;
     private CardLayout contentCards;
-    private JButton btnActiveMenu = null;
+
+    public interface Refreshable {
+        void refresh();
+    }
 
     public MainFrame() {
         initComponents();
@@ -28,336 +31,242 @@ public class MainFrame extends JFrame {
         syncActiveButton("dashboard");
     }
 
-    /** Constructor untuk mempertahankan state saat ganti tema */
     public MainFrame(int extendedState, Rectangle bounds) {
         initComponents();
         setExtendedState(extendedState);
-        if (extendedState != MAXIMIZED_BOTH) setBounds(bounds);
+        if (extendedState != MAXIMIZED_BOTH) {
+            setBounds(bounds);
+        }
         navigasiKe("dashboard");
         syncActiveButton("dashboard");
     }
 
-    private void syncActiveButton(String dest) {
-        if (pnlSidebar == null) return;
-        for (Component c : pnlSidebar.getComponents()) {
-            if (c instanceof JButton b && dest.equals(b.getClientProperty("dest"))) {
-                if (btnActiveMenu != null) btnActiveMenu.setSelected(false);
-                b.setSelected(true);
-                btnActiveMenu = b;
-                break;
-            }
-        }
-    }
-
-    private JButton navBtn(String label, String icon, String dest) {
-        JButton b = UIKit.sidebarBtn(label, icon);
-        b.putClientProperty("dest", dest);
-        b.addActionListener(e -> {
-            if (btnActiveMenu != null) btnActiveMenu.setSelected(false);
-            b.setSelected(true);
-            btnActiveMenu = b;
-            navigasiKe(dest);
-        });
-        return b;
-    }
-
     private void initComponents() {
-        setTitle("Studio Kita Management System — Premium Edition");
-        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
-        setUndecorated(true); // Modern undecorated look
-        setSize(1280, 800);
+        setTitle("Studio Kita — Premium Dashboard Rental Kamera");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(1280, 800); 
+        setMinimumSize(new Dimension(1100, 750));
         setLocationRelativeTo(null);
 
-        // Resize Listener for consistency
-        addComponentListener(new java.awt.event.ComponentAdapter() {
-            @Override
-            public void componentResized(java.awt.event.ComponentEvent e) {
-                // Force panels to re-layout if they are visible
-                if (pnlContent != null) {
-                    for (Component c : pnlContent.getComponents()) {
-                        if (c.isVisible() && c instanceof Refreshable r) {
-                            r.refresh();
-                        }
-                    }
-                }
-            }
-        });
+        // BACKGROUND ANIMASI MESH GRADIENT LUXURY
+        bgPanel = new UIKit.AnimatedGradientBackground();
+        bgPanel.setLayout(new BorderLayout(20, 20)); 
+        bgPanel.setBorder(new EmptyBorder(25, 25, 25, 25)); 
+        setContentPane(bgPanel);
 
-        // Main Layout (Glass Background)
-        JPanel root = new JPanel(new BorderLayout()) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                Color c1 = ThemeManager.isDark() ? new Color(20, 20, 40) : new Color(220, 225, 245);
-                Color c2 = ThemeManager.isDark() ? new Color(40, 30, 70) : new Color(245, 240, 255);
-                g2.setPaint(new GradientPaint(0, 0, c1, getWidth(), getHeight(), c2));
-                g2.fillRect(0, 0, getWidth(), getHeight());
-                
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                
-                // Floating Decorative Orbs
-                int a = ThemeManager.isDark() ? 12 : 25;
-                g2.setColor(new Color(UIKit.ACCENT.getRed(), UIKit.ACCENT.getGreen(), UIKit.ACCENT.getBlue(), a));
-                g2.fillOval(getWidth() - 300, -100, 600, 600);
-                
-                g2.setColor(new Color(UIKit.PURPLE.getRed(), UIKit.PURPLE.getGreen(), UIKit.PURPLE.getBlue(), a));
-                g2.fillOval(-150, getHeight() - 350, 450, 450);
-                
-                g2.setColor(new Color(UIKit.BLUE.getRed(), UIKit.BLUE.getGreen(), UIKit.BLUE.getBlue(), a / 2));
-                g2.fillOval(getWidth() / 2, getHeight() / 2, 200, 200);
-                
-                g2.dispose();
-            }
-        };
-        setContentPane(root);
-
-        // Window Bar
-        root.add(UIKit.windowBar(this, "STUDIO KITA MANAGEMENT SYSTEM"), BorderLayout.NORTH);
-
-        // Body Wrapper (Sidebar + Main)
-        JPanel body = new JPanel(new BorderLayout());
-        body.setOpaque(false);
-        root.add(body, BorderLayout.CENTER);
-
-        // 1. Sidebar (Glass)
-        pnlSidebar = buildSidebar();
-        body.add(pnlSidebar, BorderLayout.WEST);
-
-        // 2. Main Area
-        JPanel mainArea = new JPanel(new BorderLayout());
-        mainArea.setOpaque(false);
+        pnlSidebar = new UIKit.GlassPanel(30); 
+        pnlSidebar.setLayout(new BorderLayout());
+        pnlSidebar.setPreferredSize(new Dimension(280, 0)); 
         
-        pnlTopStatus = buildTopStatus();
-        mainArea.add(pnlTopStatus, BorderLayout.NORTH);
+        buildSidebar();
+        bgPanel.add(pnlSidebar, BorderLayout.WEST);
 
         contentCards = new CardLayout();
         pnlContent = new JPanel(contentCards);
         pnlContent.setOpaque(false);
-        pnlContent.setBorder(new EmptyBorder(10, 30, 30, 30));
-        mainArea.add(pnlContent, BorderLayout.CENTER);
+        pnlContent.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        body.add(mainArea, BorderLayout.CENTER);
-
-        addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override public void windowClosing(java.awt.event.WindowEvent e) { keluar(); }
-        });
-    }
-
-    private JPanel buildSidebar() {
-        UIKit.GlassPanel s = new UIKit.GlassPanel(0) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                // Right border separator
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setColor(ThemeManager.isDark() 
-                        ? new Color(255, 255, 255, 15) 
-                        : new Color(0, 0, 0, 8));
-                g2.fillRect(getWidth() - 1, 0, 1, getHeight());
-                g2.dispose();
-            }
-        };
-        s.setLayout(new BoxLayout(s, BoxLayout.Y_AXIS));
-        s.setPreferredSize(new Dimension(280, 0));
-        s.setBorder(new EmptyBorder(40, 25, 30, 25));
-
-        JLabel lblBrand = new JLabel("STUDIO KITA");
-        lblBrand.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        lblBrand.setForeground(UIKit.ACCENT);
-        lblBrand.setAlignmentX(LEFT_ALIGNMENT);
-        s.add(lblBrand);
-        s.add(UIKit.gap(45));
-
-        addSidebarSection(s, "UTAMA");
-        s.add(navBtn("Dashboard", "🏠", "dashboard"));
+        // Mendaftarkan seluruh sub-panel ke dalam container CardLayout
+        pnlContent.add(new DashboardPanel(), "dashboard");
+        pnlContent.add(new SewaPanel(), "sewa");
+        pnlContent.add(new JasaPanel(), "jasa");
+        pnlContent.add(new ProfilPanel(), "profil");
         
         if (AuthController.isAdmin()) {
-            addSidebarSection(s, "MANAJEMEN");
-            s.add(navBtn("Sewa Alat", "🎒", "sewa"));
-            s.add(navBtn("Jasa Foto", "📸", "jasa"));
-            s.add(navBtn("Data Pelanggan", "👥", "customer"));
-            
-            addSidebarSection(s, "LAPORAN");
-            s.add(navBtn("Penghasilan", "💰", "penghasilan"));
-            s.add(navBtn("Rekap Transaksi", "📊", "rekap"));
-        } else {
-            addSidebarSection(s, "LAYANAN");
-            s.add(navBtn("Sewa Alat", "🎒", "sewa"));
-            s.add(navBtn("Jasa Foto", "📸", "jasa"));
-            
-            addSidebarSection(s, "AKUN SAYA");
-            s.add(navBtn("Booking & Profil", "👤", "profil"));
+            pnlContent.add(new CustomerPanel(), "customer");
+            pnlContent.add(new AdminPanel(), "admin");
+            pnlContent.add(new RekapPanel(), "rekap");
+            pnlContent.add(new PenghasilanPanel(), "penghasilan");
         }
 
-        s.add(Box.createVerticalGlue());
-        
-        // Add Logout at bottom of sidebar too for convenience
-        s.add(UIKit.gap(20));
-        JButton btnLogoutSid = UIKit.sidebarBtn("Logout", "🚪");
-        btnLogoutSid.setForeground(UIKit.RED);
-        btnLogoutSid.addActionListener(e -> logout());
-        s.add(btnLogoutSid);
-        
-        return s;
+        bgPanel.add(pnlContent, BorderLayout.CENTER);
     }
 
-    private JPanel buildTopStatus() {
-        JPanel t = new JPanel(new BorderLayout());
-        t.setPreferredSize(new Dimension(0, 75));
-        t.setBorder(new EmptyBorder(15, 30, 0, 30));
-        t.setOpaque(false);
+    private void buildSidebar() {
+        JPanel pnlProfil = new JPanel(new BorderLayout(15, 0));
+        pnlProfil.setOpaque(false);
+        pnlProfil.setBorder(new EmptyBorder(35, 25, 30, 20));
 
-        // User Info
-        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
-        left.setOpaque(false);
-        JLabel lblAvatar = new JLabel("👤");
-        lblAvatar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 28));
+        JLabel lblAvatar = new JLabel("SK"); 
+        lblAvatar.setFont(new Font("Segoe UI", Font.BOLD, 36));
+        lblAvatar.setForeground(UIKit.currentGold()); 
+        pnlProfil.add(lblAvatar, BorderLayout.WEST);
+
+        JPanel pnlNama = new JPanel(new GridLayout(2, 1));
+        pnlNama.setOpaque(false);
         
-        User cur = AuthController.getCurrentUser();
-        JPanel userInfo = new JPanel(new GridLayout(2, 1, 0, 0));
-        userInfo.setOpaque(false);
-        JLabel lblName = new JLabel(cur != null ? cur.getNamaLengkap() : "Guest");
-        lblName.setFont(UIKit.FONT_H3);
-        lblName.setForeground(UIKit.fgPrimary());
+        User user = AuthController.getCurrentUser();
+        String namaLengkap = (user != null) ? user.getNamaLengkap() : "Guest";
+        String roleStr = (user != null) ? user.getRole() : "";
+
+        JLabel lblUser = new JLabel(namaLengkap);
+        lblUser.setFont(UIKit.FONT_BOLD);
+        lblUser.setForeground(UIKit.fgPrimary());
         
-        JLabel lblRole = new JLabel(AuthController.isAdmin() ? "ADMINISTRATOR" : "CUSTOMER");
+        JLabel lblRole = new JLabel(roleStr);
         lblRole.setFont(UIKit.FONT_SMALL);
-        lblRole.setForeground(UIKit.ACCENT);
-        
-        userInfo.add(lblName); userInfo.add(lblRole);
-        left.add(lblAvatar); left.add(userInfo);
+        lblRole.setForeground(UIKit.currentGold()); 
 
-        // Controls
-        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
-        right.setOpaque(false);
-        
-        JButton btnTheme = UIKit.iconBtn(ThemeManager.isDark() ? "☀️" : "🌙", UIKit.ACCENT);
-        btnTheme.addActionListener(e -> toggleTheme());
+        pnlNama.add(lblUser);
+        pnlNama.add(lblRole);
+        pnlProfil.add(pnlNama, BorderLayout.CENTER);
 
-        JButton btnLogout = UIKit.btn("LOGOUT", UIKit.RED);
-        btnLogout.addActionListener(e -> logout());
+        pnlSidebar.add(pnlProfil, BorderLayout.NORTH);
 
-        right.add(btnTheme); right.add(btnLogout);
+        JPanel pnlMenu = new JPanel();
+        pnlMenu.setLayout(new BoxLayout(pnlMenu, BoxLayout.Y_AXIS));
+        pnlMenu.setOpaque(false);
+        pnlMenu.setBorder(new EmptyBorder(0, 15, 0, 15));
 
-        t.add(left, BorderLayout.WEST);
-        t.add(right, BorderLayout.EAST);
-        return t;
-    }
+        addMenu(pnlMenu, "Overview", "dashboard");
+        addMenu(pnlMenu, "Sewa Alat", "sewa");
+        addMenu(pnlMenu, "Booking Jasa", "jasa");
 
-    private void toggleTheme() {
-        int state = getExtendedState();
-        Rectangle bounds = getBounds();
-        ThemeManager.toggle();
-        this.dispose();
-        new MainFrame(state, bounds).setVisible(true);
-    }
+        if (AuthController.isAdmin()) {
+            pnlMenu.add(UIKit.gap(25));
+            JLabel lblAdmin = new JLabel("    ADMIN WORKSPACE");
+            lblAdmin.setFont(new Font("Segoe UI", Font.BOLD, 10));
+            lblAdmin.setForeground(UIKit.fgMuted());
+            pnlMenu.add(lblAdmin);
+            pnlMenu.add(UIKit.gap(10));
 
-    private void addSidebarSection(JPanel p, String text) {
-        p.add(UIKit.gap(32));
-        JLabel h = new JLabel(text);
-        h.setFont(new Font("Segoe UI", Font.BOLD, 11));
-        h.setForeground(UIKit.fgMuted());
-        h.setAlignmentX(LEFT_ALIGNMENT);
-        p.add(h); p.add(UIKit.gap(14));
-    }
-
-    private void navigasiKe(String dest) {
-        try {
-            Component comp = switch (dest) {
-                case "dashboard"   -> new DashboardPanel(this);
-                case "sewa"        -> new SewaPanel();
-                case "jasa"        -> new JasaPanel();
-                case "customer"    -> new CustomerPanel();
-                case "penghasilan" -> new PenghasilanPanel();
-                case "rekap"       -> new RekapPanel();
-                case "profil"      -> new ProfilPanel();
-                default -> {
-                    JPanel p = new JPanel(new GridBagLayout());
-                    p.setOpaque(false);
-                    JLabel l = new JLabel("Halaman '" + dest + "' sedang dikembangkan 🛠️");
-                    l.setFont(UIKit.FONT_H3);
-                    l.setForeground(UIKit.fgSecondary());
-                    p.add(l);
-                    yield p;
-                }
-            };
-
-            pnlContent.removeAll();
-            pnlContent.add(comp, dest);
-            if (comp instanceof Refreshable r) r.refresh();
-            contentCards.show(pnlContent, dest);
-            pnlContent.revalidate(); pnlContent.repaint();
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Gagal memuat halaman: " + e.getMessage(), "Error", 0);
+            addMenu(pnlMenu, "Daftar Pelanggan", "customer");
+            addMenu(pnlMenu, "Staf Admin", "admin");
+            addMenu(pnlMenu, "Rekap Transaksi", "rekap");
+            addMenu(pnlMenu, "Penghasilan", "penghasilan");
+        } else {
+            pnlMenu.add(UIKit.gap(25));
+            addMenu(pnlMenu, "Profil Saya", "profil");
         }
-    }
 
-    private void logout() {
-        if (JOptionPane.showConfirmDialog(this, "Logout dari sistem?", "Logout", 0) == 0) {
+        pnlSidebar.add(pnlMenu, BorderLayout.CENTER);
+
+        JPanel pnlBottom = new JPanel(new GridLayout(2, 1, 0, 10)); 
+        pnlBottom.setOpaque(false);
+        pnlBottom.setBorder(new EmptyBorder(20, 20, 30, 20));
+
+        String themeText = ThemeManager.isDark() ? "LIGHT MODE" : "DARK MODE";
+        JButton btnTheme = new JButton(themeText);
+        btnTheme.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnTheme.setForeground(UIKit.fgPrimary());
+        btnTheme.setBackground(ThemeManager.isDark() ? new Color(255, 255, 255, 30) : new Color(0, 0, 0, 15));
+        btnTheme.setFocusPainted(false);
+        btnTheme.setBorder(new EmptyBorder(10, 10, 10, 10));
+        btnTheme.setContentAreaFilled(false);
+        btnTheme.setOpaque(true);
+        btnTheme.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnTheme.addActionListener(e -> {
+            ThemeManager.toggle();
+            int state = getExtendedState();
+            Rectangle bounds = getBounds();
+            dispose();
+            new MainFrame(state, bounds).setVisible(true);
+        });
+        pnlBottom.add(btnTheme);
+
+        JButton btnLogout = new JButton("LOG OUT");
+        btnLogout.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnLogout.setForeground(UIKit.RED); 
+        btnLogout.setBackground(new Color(255, 55, 95, 30)); 
+        btnLogout.setFocusPainted(false);
+        btnLogout.setBorder(new EmptyBorder(10, 10, 10, 10));
+        btnLogout.setContentAreaFilled(false);
+        btnLogout.setOpaque(true);
+        btnLogout.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnLogout.addActionListener(e -> {
             AuthController.logout();
+            dispose();
             new LoginForm().setVisible(true);
-            this.dispose();
-        }
+        });
+        pnlBottom.add(btnLogout);
+
+        pnlSidebar.add(pnlBottom, BorderLayout.SOUTH);
     }
 
-    private void keluar() {
-        if (JOptionPane.showConfirmDialog(this, "Keluar aplikasi?", "Exit", 0) == 0) System.exit(0);
-    }
-
-    public void goTo(String dest) { navigasiKe(dest); }
-
-    public interface Refreshable { void refresh(); }
-
-    static class DashboardPanel extends JPanel implements Refreshable {
-        private final MainFrame parent;
-        private JPanel grid;
-        public DashboardPanel(MainFrame p) { 
-            this.parent = p; 
-            setOpaque(false); 
-            addComponentListener(new java.awt.event.ComponentAdapter() {
-                @Override public void componentResized(java.awt.event.ComponentEvent e) { updateGridLayout(); }
-            });
-            refresh(); 
-        }
-        
-        private void updateGridLayout() {
-            if (grid == null) return;
-            int w = getWidth();
-            int cols = w > 1000 ? 3 : (w > 650 ? 2 : 1);
-            ((GridLayout)grid.getLayout()).setColumns(cols);
-            grid.revalidate();
-        }
-
-        @Override public void refresh() {
-            removeAll(); setLayout(new BorderLayout(0, 30));
-            
-            JPanel welcome = new JPanel(new BorderLayout()); welcome.setOpaque(false);
-            JLabel lblHello = new JLabel("Selamat Datang Kembali,");
-            lblHello.setFont(UIKit.FONT_NORMAL); 
-            lblHello.setForeground(UIKit.fgSecondary());
-            
-            JLabel lblName = new JLabel(AuthController.getCurrentUser().getNamaLengkap() + "!");
-            lblName.setFont(new Font("Segoe UI", Font.BOLD, 36));
-            lblName.setForeground(UIKit.fgPrimary());
-            
-            welcome.add(lblHello, BorderLayout.NORTH); welcome.add(lblName, BorderLayout.CENTER);
-
-            grid = new JPanel(new GridLayout(0, 3, 25, 25)); grid.setOpaque(false);
-            if (AuthController.isAdmin()) {
-                grid.add(UIKit.statCard("👥", "Total Pelanggan", String.valueOf(CustomerController.getAllCustomers().size()), UIKit.BLUE));
-                grid.add(UIKit.statCard("🎒", "Alat Disewa", String.valueOf(TransaksiController.countSewa()), UIKit.ORANGE));
-                grid.add(UIKit.statCard("📸", "Booking Jasa", String.valueOf(TransaksiController.countJasa()), UIKit.GREEN));
-                grid.add(UIKit.statCard("💰", "Total Omzet", "Rp "+String.format("%,.0f", TransaksiController.getTotalPenghasilan()), UIKit.ACCENT));
-            } else {
-                var mine = TransaksiController.getByCustomer(AuthController.getCurrentUser().getUsername());
-                grid.add(UIKit.statCard("🎒", "Sewa Saya", String.valueOf(mine.stream().filter(t->"SEWA".equals(t.getJenisLayanan())).count()), UIKit.ORANGE));
-                grid.add(UIKit.statCard("📸", "Jasa Saya", String.valueOf(mine.stream().filter(t->"JASA".equals(t.getJenisLayanan())).count()), UIKit.GREEN));
-                grid.add(UIKit.statCard("💳", "Total Transaksi", "Rp "+String.format("%,.0f", TransaksiController.getTotalByCustomer(AuthController.getCurrentUser().getUsername())), UIKit.BLUE));
+    private void addMenu(JPanel parent, String text, String dest) {
+        JButton btn = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                if (isOpaque()) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2.setColor(getBackground());
+                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15); 
+                    g2.dispose();
+                }
+                super.paintComponent(g);
             }
-            add(welcome, BorderLayout.NORTH); add(grid, BorderLayout.CENTER);
-            updateGridLayout();
-            revalidate(); repaint();
+        };
+        btn.putClientProperty("dest", dest);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setForeground(UIKit.fgMuted());
+        
+        Color baseGold = UIKit.currentGold();
+        btn.setBackground(new Color(baseGold.getRed(), baseGold.getGreen(), baseGold.getBlue(), ThemeManager.isDark() ? 40 : 25));
+        
+        btn.setHorizontalAlignment(SwingConstants.LEFT);
+        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 45));
+        btn.setContentAreaFilled(false);
+        btn.setFocusPainted(false);
+        btn.setBorder(new EmptyBorder(0, 20, 0, 0));
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        btn.addActionListener(e -> {
+            navigasiKe(dest);
+            syncActiveButton(dest);
+        });
+
+        parent.add(btn);
+        parent.add(UIKit.gap(8));
+    }
+
+    public void navigasiKe(String dest) {
+        contentCards.show(pnlContent, dest);
+        for (Component c : pnlContent.getComponents()) {
+            if (c.isVisible() && c instanceof Refreshable r) {
+                r.refresh();
+            }
+        }
+    }
+
+    /**
+     * UPGRADE UTAMA: Fungsi global pemicu sinkronisasi data real-time.
+     * Panggil fungsi ini dari SewaPanel atau JasaPanel setelah melakukan APPROVE/TOLAK.
+     */
+    public void refreshSemuaPanel() {
+        for (Component c : pnlContent.getComponents()) {
+            if (c instanceof Refreshable r) {
+                r.refresh();
+            }
+        }
+        pnlContent.revalidate();
+        pnlContent.repaint();
+    }
+
+    private void syncActiveButton(String dest) {
+        if (pnlSidebar == null) return;
+        resetButtonColors(pnlSidebar, dest);
+    }
+
+    private void resetButtonColors(Container container, String activeDest) {
+        for (Component c : container.getComponents()) {
+            if (c instanceof JButton b) {
+                String d = (String) b.getClientProperty("dest");
+                if (d != null) {
+                    if (d.equals(activeDest)) {
+                        b.setForeground(UIKit.fgPrimary());
+                        Color activeGold = UIKit.currentGold();
+                        b.setBackground(new Color(activeGold.getRed(), activeGold.getGreen(), activeGold.getBlue(), ThemeManager.isDark() ? 55 : 40));
+                        b.setOpaque(true);
+                    } else {
+                        b.setForeground(UIKit.fgMuted());
+                        b.setOpaque(false);
+                    }
+                    b.repaint();
+                }
+            } else if (c instanceof Container) {
+                resetButtonColors((Container) c, activeDest);
+            }
         }
     }
 }

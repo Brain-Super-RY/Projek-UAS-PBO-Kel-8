@@ -162,6 +162,50 @@ public class UserDAO {
         }
     }
 
+    // ── METODE TAMBAHAN UNTUK ADMIN ──────────────────────────
+
+    /** Ambil semua user dengan role 'ADMIN'. */
+    public static List<Admin> getAllAdmins() throws SQLException {
+        List<Admin> list = new ArrayList<>();
+        String sql = "SELECT * FROM users WHERE role = 'ADMIN' ORDER BY nama_lengkap";
+
+        Connection conn = DatabaseConnection.getConnection();
+        try (Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                list.add((Admin) mapUser(rs));
+            }
+        }
+        return list;
+    }
+
+    /** Menyimpan admin baru ke database. */
+    public static boolean insertAdmin(Admin a) throws SQLException {
+        String sql = "INSERT INTO users (username, password, nama_lengkap, role, email, admin_level) "
+                   + "VALUES (?, ?, ?, 'ADMIN', ?, ?)";
+
+        Connection conn = DatabaseConnection.getConnection();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, a.getUsername());
+            ps.setString(2, a.getPassword());
+            ps.setString(3, a.getNamaLengkap());
+            ps.setString(4, a.getEmail());
+            ps.setString(5, a.getAdminLevel());
+
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    /** Menghapus admin berdasarkan username. */
+    public static boolean deleteAdmin(String username) throws SQLException {
+        String sql = "DELETE FROM users WHERE username=? AND role='ADMIN'";
+        Connection conn = DatabaseConnection.getConnection();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, username);
+            return ps.executeUpdate() > 0;
+        }
+    }
+    
     // ── MAPPER ───────────────────────────────────────────────
 
     /**

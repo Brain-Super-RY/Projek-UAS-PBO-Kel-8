@@ -9,7 +9,8 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * SewaController — Logika Bisnis Penyewaan Alat MVC Role: Controller
+ * SewaController — Logika Bisnis Penyewaan Alat MVC Role: Controller 
+ * FIXED: Pencegah double-booking berbasis Nama Spesifik Unit Gear agar tidak memblokir kategori global.
  */
 public class SewaController {
 
@@ -51,19 +52,52 @@ public class SewaController {
     }
 
     /**
+     * FIXED: Memeriksa apakah suatu spesifik unit gear (berdasarkan nama kamera) 
+     * sudah disewa pada rentang tanggal yang dipilih.
+     */
+    public static boolean isJadwalBentrok(String namaKamera, LocalDate mulaiBaru, LocalDate kembaliBaru) {
+        List<Transaksi> semuaSewa = getAllSewa();
+
+        for (Transaksi t : semuaSewa) {
+            if (t == null || !(t.getLayanan() instanceof SewaAlat s)) {
+                continue;
+            }
+
+            // PERBAIKAN UTAMA: Validasi bentrok wajib membandingkan Nama Spesifik Kamera/Alat (bukan kategori makro lagi)
+            if (s.getNamaKamera().equalsIgnoreCase(namaKamera)
+                    && (t.getStatus().equalsIgnoreCase("APPROVED") || t.getStatus().equalsIgnoreCase("PENDING"))) {
+
+                // Pastikan alat tersebut belum dikembalikan oleh customer lama
+                if (s.getTglDikembalikan() == null) {
+                    LocalDate mulaiLama = s.getTglMulai();
+                    LocalDate kembaliLama = s.getTglKembali();
+
+                    // Rumus Tabrakan Jadwal: (MulaiBaru <= KembaliLama) && (KembaliBaru >= MulaiLama)
+                    if (!mulaiBaru.isAfter(kembaliLama) && !kembaliBaru.isBefore(mulaiLama)) {
+                        return true; // Terjadi bentrok nyata pada unit yang sama!
+                    }
+                }
+            }
+        }
+        return false; // Aman digunakan karena unit berbeda atau jadwal luang
+    }
+
+    /**
      * Validasi dan simpan data sewa baru. Controller memastikan semua input
-     * valid sebelum ke DAO.
+     * valid serta memeriksa bentrok jadwal sebelum disimpan ke DAO.
      *
-     * @return "OK" atau pesan error
+     * @return "OK|TotalBiaya" atau pesan error
      */
     public static String simpanSewa(String namaCustomer, String username, String telepon,
             int alatIdx, String namaKamera,
             String tglMulaiStr, String tglKembaliStr) {
-        // Validasi input
+
+        // 1. Validasi input standar
         if (namaCustomer.isBlank() || telepon.isBlank() || namaKamera.isBlank()) {
             return "Nama customer, telepon, dan nama alat wajib diisi!";
         }
 
+        // 2. Validasi format tanggal
         LocalDate tglMulai, tglKembali;
         try {
             tglMulai = LocalDate.parse(tglMulaiStr.trim());
@@ -71,14 +105,22 @@ public class SewaController {
         } catch (DateTimeParseException e) {
             return "Format tanggal salah! Gunakan format: yyyy-MM-dd";
         }
+
         if (!tglKembali.isAfter(tglMulai)) {
             return "Tanggal kembali harus setelah tanggal mulai!";
         }
 
+        // 3. FIXED: Kirim parameter 'namaKamera' ke validator bentrok jadwal
+        if (isJadwalBentrok(namaKamera.trim(), tglMulai, tglKembali)) {
+            return "BENTROK|Maaf, unit gear [" + namaKamera + "] sudah habis dibooking pada rentang tanggal tersebut!";
+        }
+
+        String kategoriDipilih = (alatIdx >= 0 && alatIdx < JENIS_ALAT.length) ? JENIS_ALAT[alatIdx] : "Kamera DSLR";
+
         try {
             // Cek apakah username sudah ada (Case Insensitive)
             Customer cust = UserDAO.getCustomerByUsername(username.trim());
-            
+
             if (cust == null) {
                 // Jika belum ada, buat baru
                 cust = new Customer(username.trim(), "pass123", namaCustomer, "", telepon, "");
@@ -92,7 +134,7 @@ public class SewaController {
 
             // Buat objek layanan
             String idSewa = SewaAlatDAO.generateId();
-            SewaAlat sw = new SewaAlat(idSewa, JENIS_ALAT[alatIdx], namaKamera,
+            SewaAlat sw = new SewaAlat(idSewa, kategoriDipilih, namaKamera.trim(),
                     tglMulai, tglKembali, TARIF[alatIdx]);
 
             // Buat transaksi
@@ -151,6 +193,15 @@ public class SewaController {
         } catch (SQLException e) {
             logError(e);
             return false;
+        }
+    }
+
+    public static java.util.List<studiokita.model.SewaAlat> dapatkanKatalogCari(String keyword) {
+        try {
+            return studiokita.model.dao.KatalogAlatDAO.cariKatalogAvailable(keyword);
+        } catch (Exception e) {
+            System.err.println("Gagal memuat katalog: " + e.getMessage());
+            return new java.util.ArrayList<>();
         }
     }
 
