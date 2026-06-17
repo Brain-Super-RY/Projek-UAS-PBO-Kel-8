@@ -75,7 +75,7 @@ public class DashboardPanel extends JPanel implements MainFrame.Refreshable {
         pnlTableCard.setLayout(new BorderLayout(0, 12));
         pnlTableCard.setBorder(BorderFactory.createEmptyBorder(18, 18, 18, 18));
 
-        String titleTabel = AuthController.isAdmin() ? "5 TRANSAKSI TERBARU MASUK" : "RIWAYAT AKTIVITAS TRANSAKSI SAYA";
+        String titleTabel = AuthController.isAdmin() ? "TRANSAKSI TERBARU" : "RIWAYAT AKTIVITAS TRANSAKSI SAYA";
         lblTitleTabel = new JLabel(titleTabel);
         lblTitleTabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblTitleTabel.setForeground(UIKit.fgPrimary());
@@ -152,7 +152,6 @@ public class DashboardPanel extends JPanel implements MainFrame.Refreshable {
             int jmlJasa = TransaksiController.countJasa();
             int totalPelanggan = CustomerController.getAllCustomers().size();
             
-            // Hitung orderan pending secara stream safe
             int jmlPending = (int) TransaksiController.getAll().stream()
                     .filter(t -> "PENDING".equalsIgnoreCase(t.getStatus()))
                     .count();
@@ -162,11 +161,11 @@ public class DashboardPanel extends JPanel implements MainFrame.Refreshable {
             lblCard3.setText(jmlSewa + " Unit");
             lblCard4.setText(totalPelanggan + " User");
 
-            // Isi Tabel Admin: 5 Transaksi Terbaru Global
+            // --- PERBAIKAN DI SINI: MENAMPILKAN KESELURUHAN TRANSAKSI ADMIN ---
             List<Transaksi> semuaTrx = TransaksiController.getAll();
-            int limit = Math.min(5, semuaTrx.size());
-            for (int i = 0; i < limit; i++) {
-                Transaksi t = semuaTrx.get(semuaTrx.size() - 1 - i);
+            // Looping dibalik dari index terakhir agar transaksi paling baru tetap berada di atas tabel
+            for (int i = semuaTrx.size() - 1; i >= 0; i--) {
+                Transaksi t = semuaTrx.get(i);
                 if (t == null) continue;
                 
                 String pelanggan = (t.getCustomer() != null) ? t.getCustomer().getNamaLengkap() : "Guest";

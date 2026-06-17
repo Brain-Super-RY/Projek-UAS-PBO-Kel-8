@@ -20,9 +20,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 
 /**
- * SewaPanel — Premium Live Search Edition. UPGRADE: Fitur Katalog Real-time
- * Auto-Suggest, Filter Unit Available, Pencarian Alat Efisien, dan Integrasi
- * Sinkronisasi Global Real-time.
+ * SewaPanel — Premium Live Search Edition. 
+ * FIXED: Sinkronisasi penuh dengan SewaController berbasis Database Online.
  */
 public class SewaPanel extends JPanel implements MainFrame.Refreshable {
 
@@ -31,7 +30,7 @@ public class SewaPanel extends JPanel implements MainFrame.Refreshable {
     // Komponen Form
     private JTextField txtNamaCust, txtUserCust, txtTelp;
 
-    // REVOLUSI KATALOG: Mengganti JComboBox kaku dengan Sistem Auto-Suggest Search Box
+    // REVOLUSI KATALOG: Sistem Auto-Suggest Search Box
     private JTextField txtSearchAlat;
     private JList<String> listHasilSearch;
     private DefaultListModel<String> listModelSearch;
@@ -109,7 +108,7 @@ public class SewaPanel extends JPanel implements MainFrame.Refreshable {
             p.add(UIKit.gap(10));
         }
 
-        // PERUBAHAN UTAMA: Search Engine Komponen pada Form Input
+        // Search Engine Komponen pada Form Input
         addFormLabel(p, "CARI GEAR FOTOGRAFI (LIVE AVAILABLE)");
         txtSearchAlat = UIKit.field();
         txtSearchAlat.setText("");
@@ -191,7 +190,7 @@ public class SewaPanel extends JPanel implements MainFrame.Refreshable {
         cmbBlnK.addActionListener(autoCalc);
         cmbThnK.addActionListener(autoCalc);
 
-        // EVENT LISTENER 1: Real-time Listener saat Customer/Admin mengetik keyword nama barang
+        // EVENT LISTENER 1: Real-time Live Suggestion Search
         txtSearchAlat.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyReleased(java.awt.event.KeyEvent e) {
@@ -201,7 +200,7 @@ public class SewaPanel extends JPanel implements MainFrame.Refreshable {
                     return;
                 }
 
-                // Ambil data katalog available via jembatan baru Controller
+                // Ambil data katalog available via database online melalui controller
                 katalogSaatIni = SewaController.dapatkanKatalogCari(text);
                 listModelSearch.clear();
 
@@ -354,27 +353,11 @@ public class SewaPanel extends JPanel implements MainFrame.Refreshable {
             }
         }
 
-        // Ambil data nama dan pengenal dari objek hasil pencarian
+        // Ambil data nama langsung dari objek hasil pencarian
         String namaAlat = gearTerpilihSaran.getNamaKamera();
 
-        // Catatan: index diarahkan ke index model aslinya di core controller
-        String kategoriAlat = gearTerpilihSaran.getJenisAlat();
-
-        int indexAsli = -1;
-        for (int i = 0; i < SewaController.JENIS_ALAT.length; i++) {
-            // Cocokkan kategori dari database dengan array kategori di controller
-            if (SewaController.JENIS_ALAT[i].equalsIgnoreCase(kategoriAlat)) {
-                indexAsli = i;
-                break;
-            }
-        }
-
-        // Jika tidak cocok dengan kategori manapun, beri fallback aman ke 0
-        if (indexAsli == -1) {
-            indexAsli = 0;
-        }
-
-        String hasil = SewaController.simpanSewa(nama, user, telp, indexAsli, namaAlat, tglM, tglK);
+        // FIXED: Parameter index diisi formalitas 0 karena controller sekarang full membaca data driven langsung dari database via namaAlat
+        String hasil = SewaController.simpanSewa(nama, user, telp, 0, namaAlat, tglM, tglK);
 
         if (hasil.startsWith("OK")) {
             String[] part = hasil.split("\\|");
@@ -399,16 +382,13 @@ public class SewaPanel extends JPanel implements MainFrame.Refreshable {
         }
     }
 
-    // =========================================================================
-    // UPGRADE METHOD: Update Status Transaksi dengan Proteksi Validasi Mutlak
-    // =========================================================================
     private void updateStatusTrx(String statusBaru) {
         int row = tabel.getSelectedRow();
         if (row >= 0) {
             String idTrx = tabel.getValueAt(row, 0).toString();
             String statusSaatIni = tabel.getValueAt(row, 5).toString();
 
-            // PROTEKSI INTERSEPSI: Mencegah perubahan status jika transaksi sudah berstatus selesai
+            // Mencegah perubahan status jika transaksi sudah selesai
             if ("SELESAI".equalsIgnoreCase(statusSaatIni)) {
                 JOptionPane.showMessageDialog(this,
                         "Transaksi ini sudah SELESAI (alat telah dikembalikan) dan tidak dapat diubah lagi!",
@@ -416,7 +396,6 @@ public class SewaPanel extends JPanel implements MainFrame.Refreshable {
                 return;
             }
 
-            // Pemicu Update ke Database via Jalur Utama Controller
             if (TransaksiController.updateStatusPesanan(idTrx, statusBaru)) {
                 JOptionPane.showMessageDialog(this, "Status pesanan " + idTrx + " berhasil diubah menjadi " + statusBaru, "Sukses", JOptionPane.INFORMATION_MESSAGE);
                 triggerGlobalRefresh();
@@ -476,7 +455,6 @@ public class SewaPanel extends JPanel implements MainFrame.Refreshable {
         }
     }
 
-    // Mengirim trigger pembaruan data secara menyeluruh ke semua panel via MainFrame
     private void triggerGlobalRefresh() {
         Component topLevel = SwingUtilities.getWindowAncestor(this);
         if (topLevel instanceof MainFrame mf) {
@@ -511,12 +489,12 @@ public class SewaPanel extends JPanel implements MainFrame.Refreshable {
             pw.println("=========================================");
             pw.println(" ID TRANSAKSI : " + idTrx);
             pw.println(" CUSTOMER     : " + customer);
-            pw.println(" STATUS TRANG : " + status);
+            pw.println(" STATUS       : " + status);
             pw.println(" WAKTU CETAK  : " + java.time.LocalDateTime.now().toString().substring(0, 19));
             pw.println("-----------------------------------------");
             pw.println(" RINCIAN ITEM:");
             pw.println(" - " + gear);
-            pw.println("   Mulai Sewa : " + tglM);
+            pw.println("   Mulai Sewa    : " + tglM);
             pw.println("   Target Selesai: " + tglK);
             pw.println("-----------------------------------------");
             pw.println(" TOTAL BIAYA  : " + total);
@@ -548,27 +526,13 @@ public class SewaPanel extends JPanel implements MainFrame.Refreshable {
             tabel.repaint();
         }
 
-        // Hubungkan semua dropdown tanggal ke style engine UIKit
-        if (cmbTglM != null) {
-            UIKit.styleComboBox(cmbTglM);
-        }
-        if (cmbBlnM != null) {
-            UIKit.styleComboBox(cmbBlnM);
-        }
-        if (cmbThnM != null) {
-            UIKit.styleComboBox(cmbThnM);
-        }
-        if (cmbTglK != null) {
-            UIKit.styleComboBox(cmbTglK);
-        }
-        if (cmbBlnK != null) {
-            UIKit.styleComboBox(cmbBlnK);
-        }
-        if (cmbThnK != null) {
-            UIKit.styleComboBox(cmbThnK);
-        }
+        if (cmbTglM != null) { UIKit.styleComboBox(cmbTglM); }
+        if (cmbBlnM != null) { UIKit.styleComboBox(cmbBlnM); }
+        if (cmbThnM != null) { UIKit.styleComboBox(cmbThnM); }
+        if (cmbTglK != null) { UIKit.styleComboBox(cmbTglK); }
+        if (cmbBlnK != null) { UIKit.styleComboBox(cmbBlnK); }
+        if (cmbThnK != null) { UIKit.styleComboBox(cmbThnK); }
 
-        // Tarik data riwayat transaksi terupdate
         try {
             if (AuthController.isAdmin()) {
                 daftarSewa = new ArrayList<>(SewaController.getAllSewa());

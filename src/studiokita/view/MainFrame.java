@@ -13,8 +13,6 @@ import java.awt.*;
 
 /**
  * MainFrame — Premium Dashboard Frame.
- * UPGRADE: Sistem Sinkronisasi Global Real-time Event Trigger untuk
- * pembaruan data lintas panel (Dashboard, Sewa, Jasa, dan Rekap).
  */
 public class MainFrame extends JFrame {
 
@@ -25,12 +23,18 @@ public class MainFrame extends JFrame {
         void refresh();
     }
 
+    // 1. CONSTRUCTOR UTAMA (Dipanggil pertama kali setelah login sukses)
     public MainFrame() {
         initComponents();
+        
+        // Membuka frame langsung dalam keadaan maksimal (Layar Penuh, Taskbar Tetap Ada)
+        setExtendedState(JFrame.MAXIMIZED_BOTH); 
+        
         navigasiKe("dashboard");
         syncActiveButton("dashboard");
     }
 
+    // 2. CONSTRUCTOR KEDUA (Dipanggil otomatis saat ganti tema agar ukuran jendela tidak berubah)
     public MainFrame(int extendedState, Rectangle bounds) {
         initComponents();
         setExtendedState(extendedState);
@@ -220,18 +224,22 @@ public class MainFrame extends JFrame {
         parent.add(UIKit.gap(8));
     }
 
+    // 🔥 PERBAIKAN DI SINI: Alur refresh diperbaiki agar terpanggil dengan akurat
     public void navigasiKe(String dest) {
         contentCards.show(pnlContent, dest);
-        for (Component c : pnlContent.getComponents()) {
-            if (c.isVisible() && c instanceof Refreshable r) {
-                r.refresh();
+        
+        // Panggil SwingUtilities agar eksekusi refresh berjalan tepat setelah CardLayout selesai merender komponen
+        SwingUtilities.invokeLater(() -> {
+            for (Component c : pnlContent.getComponents()) {
+                if (c.isVisible() && c instanceof Refreshable r) {
+                    r.refresh();
+                }
             }
-        }
+        });
     }
 
     /**
-     * UPGRADE UTAMA: Fungsi global pemicu sinkronisasi data real-time.
-     * Panggil fungsi ini dari SewaPanel atau JasaPanel setelah melakukan APPROVE/TOLAK.
+     * Fungsi global pemicu sinkronisasi data real-time lintas panel.
      */
     public void refreshSemuaPanel() {
         for (Component c : pnlContent.getComponents()) {
