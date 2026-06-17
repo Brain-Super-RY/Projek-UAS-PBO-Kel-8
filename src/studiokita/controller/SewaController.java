@@ -2,26 +2,40 @@ package studiokita.controller;
 
 import studiokita.model.*;
 import studiokita.model.dao.*;
-import java.sql.SQLException;
+import java.sql.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * SewaController — Logika Bisnis Penyewaan Alat MVC Role: Controller 
- * FIXED: Pencegah double-booking berbasis Nama Spesifik Unit Gear agar tidak memblokir kategori global.
- */
 public class SewaController {
 
-    public static final String[] JENIS_ALAT = {
-        "Kamera DSLR", "Kamera Mirrorless", "Lensa Wide", "Lensa Tele",
-        "Lensa Portrait", "Tripod", "Flash Eksternal", "Softbox", "Drone"
-    };
-    public static final double[] TARIF = {
-        250_000, 300_000, 150_000, 175_000,
-        125_000, 50_000, 75_000, 80_000, 500_000
-    };
+    /**
+     * Helper Method: Mengambil data tarif dan kategori langsung dari database master_alat.
+     * Menggunakan nama kamera sebagai keyword pencarian.
+     */
+    private static Object[] ambilDataAlatDariDB(String namaKamera) {
+        Object[] data = new Object[2];
+        data[0] = "Kamera";    // Default jenis_alat jika tidak ditemukan
+        data[1] = 250000.0;    // Default tarif_per_hari jika tidak ditemukan
+
+        String query = "SELECT jenis_alat, tarif_per_hari FROM master_alat WHERE nama_kamera = ?";
+        
+        try (Connection conn = DriverManager.getConnection("jdbc:mysql://thomas.proxy.rlwy.net:49499/railway", "root", "qKuilazWpVhjLbYPsCsFZFZubZCSUBPI"); 
+             PreparedStatement ps = conn.prepareStatement(query)) {
+            
+            ps.setString(1, namaKamera.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    data[0] = rs.getString("jenis_alat");
+                    data[1] = rs.getDouble("tarif_per_hari");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[SewaController] Gagal mengambil tarif dari DB: " + e.getMessage());
+        }
+        return data;
+    }
 
     /**
      * Ambil semua data sewa dari DB via DAO.
@@ -52,7 +66,7 @@ public class SewaController {
     }
 
     /**
-     * FIXED: Memeriksa apakah suatu spesifik unit gear (berdasarkan nama kamera) 
+     * Memeriksa apakah suatu spesifik unit gear (berdasarkan nama kamera) 
      * sudah disewa pada rentang tanggal yang dipilih.
      */
     public static boolean isJadwalBentrok(String namaKamera, LocalDate mulaiBaru, LocalDate kembaliBaru) {
@@ -63,28 +77,27 @@ public class SewaController {
                 continue;
             }
 
-            // PERBAIKAN UTAMA: Validasi bentrok wajib membandingkan Nama Spesifik Kamera/Alat (bukan kategori makro lagi)
             if (s.getNamaKamera().equalsIgnoreCase(namaKamera)
                     && (t.getStatus().equalsIgnoreCase("APPROVED") || t.getStatus().equalsIgnoreCase("PENDING"))) {
 
-                // Pastikan alat tersebut belum dikembalikan oleh customer lama
                 if (s.getTglDikembalikan() == null) {
                     LocalDate mulaiLama = s.getTglMulai();
                     LocalDate kembaliLama = s.getTglKembali();
 
                     // Rumus Tabrakan Jadwal: (MulaiBaru <= KembaliLama) && (KembaliBaru >= MulaiLama)
                     if (!mulaiBaru.isAfter(kembaliLama) && !kembaliBaru.isBefore(mulaiLama)) {
-                        return true; // Terjadi bentrok nyata pada unit yang sama!
+                        return true; 
                     }
                 }
             }
         }
-        return false; // Aman digunakan karena unit berbeda atau jadwal luang
+        return false; 
     }
 
     /**
-     * Validasi dan simpan data sewa baru. Controller memastikan semua input
-     * valid serta memeriksa bentrok jadwal sebelum disimpan ke DAO.
+     * Validasi dan simpan data sewa baru.
+     * Parameter 'alatIdx' tetap dipertahankan agar tidak merusak parameter UI lama, 
+     * namun harganya sekarang otomatis di-override langsung dari database online.
      *
      * @return "OK|TotalBiaya" atau pesan error
      */
@@ -110,32 +123,33 @@ public class SewaController {
             return "Tanggal kembali harus setelah tanggal mulai!";
         }
 
-        // 3. FIXED: Kirim parameter 'namaKamera' ke validator bentrok jadwal
+        // 3. Validasi bentrok jadwal
         if (isJadwalBentrok(namaKamera.trim(), tglMulai, tglKembali)) {
             return "BENTROK|Maaf, unit gear [" + namaKamera + "] sudah habis dibooking pada rentang tanggal tersebut!";
         }
 
-        String kategoriDipilih = (alatIdx >= 0 && alatIdx < JENIS_ALAT.length) ? JENIS_ALAT[alatIdx] : "Kamera DSLR";
+        // 4. AMBIL DATA REAL-TIME DARI DATABASE (Menggantikan Array Statis)
+        Object[] dataAlat = ambilDataAlatDariDB(namaKamera);
+        String kategoriDipilih = (String) dataAlat[0];
+        double tarifDinamis = (Double) dataAlat[1];
 
         try {
-            // Cek apakah username sudah ada (Case Insensitive)
+            // Cek apakah username sudah ada
             Customer cust = UserDAO.getCustomerByUsername(username.trim());
 
             if (cust == null) {
-                // Jika belum ada, buat baru
                 cust = new Customer(username.trim(), "pass123", namaCustomer, "", telepon, "");
                 UserDAO.insertCustomer(cust);
             } else {
-                // Jika sudah ada, update info terbarunya (nama/telepon)
                 cust.setNamaLengkap(namaCustomer);
                 cust.setNoTelepon(telepon);
                 UserDAO.updateCustomer(cust);
             }
 
-            // Buat objek layanan
+            // Buat objek layanan dengan tarif dinamis hasil query database
             String idSewa = SewaAlatDAO.generateId();
             SewaAlat sw = new SewaAlat(idSewa, kategoriDipilih, namaKamera.trim(),
-                    tglMulai, tglKembali, TARIF[alatIdx]);
+                    tglMulai, tglKembali, tarifDinamis);
 
             // Buat transaksi
             String idTrx = TransaksiDAO.generateId();
@@ -172,13 +186,19 @@ public class SewaController {
 
     /**
      * Hitung estimasi biaya sewa (live preview di form).
+     * UBAHAN: Menggunakan parameter namaKamera untuk mencari tarif asli di database.
      */
-    public static double hitungEstimasi(int alatIdx, String tglMulaiStr, String tglKembaliStr) {
+    public static double hitungEstimasi(String namaKamera, String tglMulaiStr, String tglKembaliStr) {
         try {
             LocalDate m = LocalDate.parse(tglMulaiStr.trim());
             LocalDate k = LocalDate.parse(tglKembaliStr.trim());
             long dur = java.time.temporal.ChronoUnit.DAYS.between(m, k);
-            return Math.max(0, dur) * TARIF[alatIdx];
+            
+            // Ambil harga asli dari DB online
+            Object[] dataAlat = ambilDataAlatDariDB(namaKamera);
+            double tarifDinamis = (Double) dataAlat[1];
+            
+            return Math.max(0, dur) * tarifDinamis;
         } catch (Exception e) {
             return 0;
         }
@@ -196,9 +216,9 @@ public class SewaController {
         }
     }
 
-    public static java.util.List<studiokita.model.SewaAlat> dapatkanKatalogCari(String keyword) {
+    public static List<SewaAlat> dapatkanKatalogCari(String keyword) {
         try {
-            return studiokita.model.dao.KatalogAlatDAO.cariKatalogAvailable(keyword);
+            return KatalogAlatDAO.cariKatalogAvailable(keyword);
         } catch (Exception e) {
             System.err.println("Gagal memuat katalog: " + e.getMessage());
             return new java.util.ArrayList<>();

@@ -2,17 +2,17 @@
                 STUDIO KITA               
        Premium Photography & Gear Rent     
 =========================================
- ID TRANSAKSI : TRX0001
- CUSTOMER     : Rizky Yoga Salasa
- STATUS       : SELESAI
- WAKTU CETAK  : 2026-06-15T08:28:42
+ ID TRANSAKSI : TRX0010
+ CUSTOMER     : Amel
+ STATUS       : PENDING
+ WAKTU CETAK  : 2026-06-15T07:56:46
 -----------------------------------------
  RINCIAN ITEM:
- - Canon EOS R5
-   Mulai Sewa    : 2026-06-14
-   Target Selesai: 2026-06-18
+ - Panasonic Lumix GH6
+   Mulai Sewa    : 2026-06-15
+   Target Selesai: 2026-06-20
 -----------------------------------------
- TOTAL BIAYA  : Rp 1.100.000
+ TOTAL BIAYA  : Rp 1.375.000
 =========================================
     Terima kasih telah mempercayakan     
      kebutuhan produksi Anda kepada      

@@ -35,7 +35,6 @@ public class AdminPanel extends JPanel implements MainFrame.Refreshable {
         setLayout(new BorderLayout(0, 0));
         setOpaque(false);
 
-        // Header Panel — EMOJI DAN TANDA KUTIP NYASAR SUDAH DIAPUS ✨
         add(UIKit.topBar("PANEL ADMINISTRATOR", "Manajemen hak akses, staf internal, dan kasir studio", UIKit.RED), BorderLayout.NORTH);
 
         center = new JPanel(new BorderLayout(30, 20));
