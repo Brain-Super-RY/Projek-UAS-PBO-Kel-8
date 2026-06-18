@@ -75,7 +75,7 @@ Jika Anda ingin menjalankan aplikasi secara offline melalui `localhost` (XAMPP):
 1. Aktifkan modul **Apache** dan **MySQL** pada XAMPP Control Panel Anda.
 2. Buka browser dan akses `http://localhost/phpmyadmin/`.
 3. Buat database baru dengan nama `studiokita`.
-4. Pilih menu **Import**, lalu pilih file skema SQL proyek yang terletak di: `/database/studiokita.sql`.
+4. Pilih menu **Import**, lalu pilih file skema SQL proyek yang terletak di: `railway.sql`.
 5. Sesuaikan kredensial host, username, dan password database Anda pada file kelas `KoneksiDB.java` di package `studiokita.database`.
 
 
