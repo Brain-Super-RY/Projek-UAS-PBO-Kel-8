@@ -1,6 +1,6 @@
 # 📸 Rancang Bangun Aplikasi Manajemen Jasa dan Penyewaan Studio Fotografi "Studio Kita" Berbasis Pemrograman Berorientasi Objek
 
-Dokumentasi ini disusun untuk memenuhi tugas projek akhir mata kuliah **Pemrograman Berorientasi Objek (PBO)** Semester Genap. Aplikasi ini dikembangkan menggunakan bahasa pemrograman Java dengan menerapkan arsitektur *Model-View-Controller (MVC)* dan *Data Access Object (DAO)* secara *pure coding* (tanpa GUI Builder) untuk mengelola operasional jasa fotografi dan sewa alat pada **Studio Kita**.
+Dokumentasi ini disusun untuk memenuhi tugas projek akhir mata kuliah **Pemrograman Berorientasi Objek (PBO)** Semester Genap. Aplikasi ini dikembangkan menggunakan bahasa pemrograman Java dengan menerapkan arsitektur *Model-View-Controller (MVC)* dan *Data Access Object (DAO)* untuk mengelola operasional jasa fotografi dan sewa alat pada **Studio Kita**.
 
 ---
 
