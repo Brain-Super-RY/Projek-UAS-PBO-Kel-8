@@ -5,10 +5,10 @@ Dokumentasi ini disusun untuk memenuhi tugas projek akhir mata kuliah **Pemrogra
 ---
 
 ## 👥 Anggota Kelompok 8
-*   **Amelia Marliana** (NPM: [2510631170025])
-*   **[An'amatus Syafira Aulia Azahra]** (NPM: [2510631170013])
-*   **[Raffa Hafizh Hauzaan]** (NPM: [2510631170004])
-*   **[Rizky Yoga Salasa]** (NPM: [2510631170049])
+*   **Amelia Marliana** (NPM: 2510631170025)
+*   **An'amatus Syafira Aulia Azahra** (NPM: 2510631170013)
+*   **Raffa Hafizh Hauzaan** (NPM: 2510631170004)
+*   **Rizky Yoga Salasa** (NPM: 2510631170049)
 
 ---
 
